@@ -258,7 +258,27 @@ class Strategy(metaclass=ABCMeta):
         """
         assert round(size) == size >= 100, \
             "size must be a positive whole number of units"
-        return self._broker.new_order(size, limit, stop, sl, tp, tag)    
+            
+        # 检查是否有足够资金
+        price = self._broker._adjusted_price(size)
+        commission = self._broker._commission(size, price)
+        total_cost = abs(size) * price + commission
+        if total_cost > self._broker.margin_available * self._broker._leverage:
+            # warnings.warn(f"Not enough margin to place order. Required: {total_cost:.2f}, Available: {self._broker.margin_available * self._broker._leverage:.2f}")
+
+            # 如果资金不足，adjust size 为最大可下单数量
+            size = ((self._broker.margin_available * self._broker._leverage - commission) / price ) //100 * 100
+
+            # since the final price will be price of next bar's open. minus extra 100 to avoid margin call
+            # size -= 100
+            # print(f"Not enough margin to place order. Required: {total_cost:.2f}, Available: {self._broker.margin_available * self._broker._leverage:.2f}")
+            # print(f"price: {price}, commission: {commission}")
+            # print(f"Adjusted size: {size}")
+            if size < 100:
+                # warnings.warn("size is still too small to place order after adjustment")
+                return None
+            
+        return self._broker.new_order(size, limit, stop, sl, tp, tag)
 
     def sell(self, *,
              size: float = _FULL_EQUITY,
@@ -996,6 +1016,7 @@ class _Broker:
             # Adjust price to include commission (or bid-ask spread).
             # In long positions, the adjusted price is a fraction higher, and vice versa.
             adjusted_price = self._adjusted_price(order.size, price)
+            total_commission = self._commission(order.size, price)
             adjusted_price_plus_commission = adjusted_price + self._commission(order.size, price)
 
             # If order size was specified proportionally,
@@ -1039,7 +1060,7 @@ class _Broker:
                         break
 
             # If we don't have enough liquidity to cover for the order, the broker CANCELS it
-            if abs(need_size) * adjusted_price_plus_commission > \
+            if (abs(need_size) * adjusted_price + total_commission) > \
                     self.margin_available * self._leverage:
                 self.orders.remove(order)
                 continue
