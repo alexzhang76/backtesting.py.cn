@@ -10,13 +10,13 @@ if __name__ == '__main__':
 
     setup(
         name='backtesting',
-        description="Backtest trading strategies in Python",
+        description="Backtest trading strategies in Python for CN Exchanges",
         license='AGPL-3.0',
-        url='https://kernc.github.io/backtesting.py/',
+        url='https://github.com/alexzhang76/backtesting.py.cn/',
         project_urls={
-            'Documentation': 'https://kernc.github.io/backtesting.py/doc/backtesting/',
-            'Source': 'https://github.com/kernc/backtesting.py/',
-            'Tracker': 'https://github.com/kernc/backtesting.py/issues',
+            'Documentation': 'https://github.com/alexzhang76/backtesting.py.cn/doc/backtesting/',
+            'Source': 'https://github.com/alexzhang76/backtesting.py.cn/',
+            'Tracker': 'https://github.com/alexzhang76/backtesting.py.cn/issues',
         },
         long_description=open(os.path.join(os.path.dirname(__file__), 'README.md'),
                               encoding='utf-8').read(),

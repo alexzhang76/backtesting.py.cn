@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sys
 import warnings
+import datetime
 from abc import ABCMeta, abstractmethod
 from copy import copy
 from functools import lru_cache, partial
@@ -235,6 +236,29 @@ class Strategy(metaclass=ABCMeta):
         assert 0 < size < 1 or round(size) == size >= 1, \
             "size must be a positive fraction of equity, or a positive whole number of units"
         return self._broker.new_order(size, limit, stop, sl, tp, tag)
+    
+    def buy_ex(self, *,
+            size: float,
+            limit: Optional[float] = None,
+            stop: Optional[float] = None,
+            sl: Optional[float] = None,
+            tp: Optional[float] = None,
+            tag: object = None) -> 'Order':
+        """
+        Place a new long order using number of units and return it. For explanation of parameters, see `Order`
+        and its properties.
+        Unless you're running `Backtest(..., trade_on_close=True)`,
+        market orders are filled on next bar's open,
+        whereas other order types (limit, stop-limit, stop-market) are filled when
+        the respective conditions are met.
+
+        See `Position.close()` and `Trade.close()` for closing existing positions.
+
+        See also `Strategy.sell()`.
+        """
+        assert round(size) == size >= 100, \
+            "size must be a positive whole number of units"
+        return self._broker.new_order(size, limit, stop, sl, tp, tag)    
 
     def sell(self, *,
              size: float = _FULL_EQUITY,
@@ -391,6 +415,20 @@ class Position:
         """
         for trade in self.__broker.trades:
             trade.close(portion)
+
+    def close_ex(self, size: float, date: datetime.date):
+        """
+        Close specific units of position by closing accumulated units from active trade. See `Trade.close_ex`.
+        """
+        for trade in self.__broker.trades:
+            if trade.entry_date < date:
+                # check trade size
+                if size <= trade.size:
+                    trade.close_ex(size, date)
+                    break
+                else:
+                    trade.close_ex(trade.size, date)
+                    size -= trade.size
 
     def __repr__(self):
         return f'<Position: {self.size} ({len(self.__broker.trades)} trades)>'
@@ -594,6 +632,18 @@ class Trade:
         order = Order(self.__broker, size, parent_trade=self, tag=self.__tag)
         self.__broker.orders.insert(0, order)
 
+    def close_ex(self, size: float, date: datetime.date):
+        """Place new `Order` to close specific units of the trade at next market price."""
+        assert round(size) == size >= 100, "size must be a positive whole number of units"
+        assert size <= self.__size, "size must be less than or equal to the trade size"
+        # date must be later than the entry date
+        if date <= self.entry_date:
+            #raise ValueError("date must be later than the entry date, it can't be same date on cn Exchanges")
+            return
+        
+        order = Order(self.__broker, -size, parent_trade=self, tag=self.__tag)
+        self.__broker.orders.insert(0, order)
+
     # Fields getters
 
     @property
@@ -651,6 +701,11 @@ class Trade:
     def entry_time(self) -> Union[pd.Timestamp, int]:
         """Datetime of when the trade was entered."""
         return self.__broker._data.index[self.__entry_bar]
+    
+    @property
+    def entry_date(self) -> Union[datetime.date, int]:
+        """Date of when the trade was entered."""
+        return self.__broker._data.index[self.__entry_bar].date()    
 
     @property
     def exit_time(self) -> Optional[Union[pd.Timestamp, int]]:
