@@ -110,8 +110,12 @@ class SmaCross(Strategy):
         # If sma1 crosses above sma2, close any existing
         # short trades, and buy the asset
         if crossover(self.sma1, self.sma2):
+            # debug 
+            #print("Available cash:", self.available_cash)
+            #print("Available cash leveraged:", self.available_cash_leveraged)
+
             size = 400
-            # print(self.data.index[-1].date(), "buy size:", size)
+            #print(self.data.index[-1].date(), "buy size:", size)
             order_id = self.buy_ex(size=size)
             if not order_id:
                 print("Not enough margin to place estimated minimal order")
@@ -122,7 +126,7 @@ class SmaCross(Strategy):
         # long trades, and sell the asset
         elif crossover(self.sma2, self.sma1):
             if self.position:
-                print(self.data.index[-1].date(), "sell size:", self.position.size)
+                #print(self.data.index[-1].date(), "sell size:", self.position.size)
                 self.position.close_ex(self.position.size, self.data.index[-1].date())
 
 

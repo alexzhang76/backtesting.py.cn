@@ -354,6 +354,16 @@ class Strategy(metaclass=ABCMeta):
         return self._broker.position
 
     @property
+    def available_cash_leveraged(self) -> float:
+        """Available cash in the account."""
+        return self._broker.margin_available * self._broker._leverage
+    
+    @property
+    def available_cash(self) -> float:
+        """Available cash in the account."""
+        return self._broker._cash
+
+    @property
     def orders(self) -> 'Tuple[Order, ...]':
         """List of orders (see `Order`) waiting for execution."""
         return _Orders(self._broker.orders)
