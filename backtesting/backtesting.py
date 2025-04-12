@@ -258,6 +258,9 @@ class Strategy(metaclass=ABCMeta):
         """
         assert round(size) == size >= 100, \
             "size must be a positive whole number of units"
+        
+        # must be multiple of 100 in CN exchanges
+        size = size // 100 * 100
             
         # 检查是否有足够资金
         price = self._broker._adjusted_price(size)
