@@ -259,8 +259,16 @@ class Strategy(metaclass=ABCMeta):
         assert round(size) == size >= 100, \
             "size must be a positive whole number of units"
         
-        # must be multiple of 100 in CN exchanges
-        size = size // 100 * 100
+        # A股手数：科创板(688) 200，其余 100
+        stock = ""
+        try:
+            stock = str(self.data.Stock[-1])
+        except Exception:
+            pass
+        lot_size = 200 if str(stock).split(".")[0].startswith("688") else 100
+        size = size // lot_size * lot_size
+        if size < lot_size:
+            return None
             
         # 检查是否有足够资金
         price = self._broker._adjusted_price(size)
@@ -270,14 +278,14 @@ class Strategy(metaclass=ABCMeta):
             # warnings.warn(f"Not enough margin to place order. Required: {total_cost:.2f}, Available: {self._broker.margin_available * self._broker._leverage:.2f}")
 
             # 如果资金不足，adjust size 为最大可下单数量
-            size = ((self._broker.margin_available * self._broker._leverage - commission) / price ) //100 * 100
+            size = ((self._broker.margin_available * self._broker._leverage - commission) / price ) // lot_size * lot_size
 
             # since the final price will be price of next bar's open. minus extra 100 to avoid margin call
             # size -= 100
             # print(f"Not enough margin to place order. Required: {total_cost:.2f}, Available: {self._broker.margin_available * self._broker._leverage:.2f}")
             # print(f"price: {price}, commission: {commission}")
             # print(f"Adjusted size: {size}")
-            if size < 100:
+            if size < lot_size:
                 # warnings.warn("size is still too small to place order after adjustment")
                 return None
             
