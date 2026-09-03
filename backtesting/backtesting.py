@@ -256,17 +256,21 @@ class Strategy(metaclass=ABCMeta):
 
         See also `Strategy.sell()`.
         """
-        assert round(size) == size >= 100, \
+        assert round(size) == size >= 1, \
             "size must be a positive whole number of units"
         
-        # A股手数：科创板(688) 200，其余 100
+        # 科创板(688)：单笔不低于200股，超出部分按1股递增。其他A股：100股整数倍。
         stock = ""
         try:
             stock = str(self.data.Stock[-1])
         except Exception:
             pass
-        lot_size = 200 if str(stock).split(".")[0].startswith("688") else 100
-        size = size // lot_size * lot_size
+        is_star = str(stock).split(".")[0].startswith("688")
+        lot_size = 200 if is_star else 100
+        lot_step = 1 if is_star else 100
+        size = int(size)
+        if not is_star:
+            size = size // lot_step * lot_step
         if size < lot_size:
             return None
             
@@ -278,7 +282,9 @@ class Strategy(metaclass=ABCMeta):
             # warnings.warn(f"Not enough margin to place order. Required: {total_cost:.2f}, Available: {self._broker.margin_available * self._broker._leverage:.2f}")
 
             # 如果资金不足，adjust size 为最大可下单数量
-            size = ((self._broker.margin_available * self._broker._leverage - commission) / price ) // lot_size * lot_size
+            size = int((self._broker.margin_available * self._broker._leverage - commission) / price)
+            if not is_star:
+                size = size // lot_step * lot_step
 
             # since the final price will be price of next bar's open. minus extra 100 to avoid margin call
             # size -= 100
